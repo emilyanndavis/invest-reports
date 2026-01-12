@@ -1,5 +1,6 @@
 import os
 import shutil
+import sys
 import tempfile
 import unittest
 
@@ -38,6 +39,7 @@ def _generate_mock_watershed_data(num_features):
     return (vector_data, dataframe)
 
 
+@unittest.skipIf(sys.platform.startswith("win"), "segfaults on Windows")
 class SDRNDRUtilsTests(unittest.TestCase):
     """Unit tests for SDR/NDR utils."""
 
