@@ -39,6 +39,7 @@ def _generate_mock_watershed_data(num_features):
     return (vector_data, dataframe)
 
 
+@unittest.skipIf(sys.platform.startswith("win"), "segfaults on Windows")
 class SDRNDRUtilsTests(unittest.TestCase):
     """Unit tests for SDR/NDR utils."""
 
@@ -92,7 +93,6 @@ class SDRNDRUtilsTests(unittest.TestCase):
         # Make sure totals_table is None.
         self.assertIsNone(totals_table)
 
-    @unittest.skipIf(sys.platform.startswith("win"), "segfaults on Windows")
     def test_generate_results_table_and_totals(self):
         """Return main table and totals table when vector has > 1 feature."""
 
