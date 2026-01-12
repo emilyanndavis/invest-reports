@@ -19,6 +19,9 @@ PROJ_WKT = projection.ExportToWkt()
 
 REFS_DIR = os.path.join('tests', 'refs')
 
+# There can be platform-specific differences in text and fonts
+# that make image comparisons fail. These settings can standardize
+# those across platforms.
 set_font_settings_for_testing()
 
 
