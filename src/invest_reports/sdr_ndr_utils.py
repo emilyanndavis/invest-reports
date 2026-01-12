@@ -59,10 +59,11 @@ def generate_results_table_from_vector(filepath, cols_to_sum):
         totals_df = pandas.DataFrame()
         totals_df.loc['Totals', cols_to_sum] = vector_df.sum(axis=0)
         html_table_totals = totals_df.to_html(
-            index=True, index_names=True, na_rep='', classes='full-width')
+            index=True, index_names=True, na_rep='', classes='full-width',
+            encoding='utf-8')
 
     html_table_main = vector_df.to_html(
-        index=False, na_rep='', classes=css_classes)
+        index=False, na_rep='', classes=css_classes, encoding='utf-8')
 
     return (html_table_main, html_table_totals)
 
