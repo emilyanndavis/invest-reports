@@ -1,0 +1,59 @@
+name: Test invest_reports
+
+on: [push, pull_request]
+
+concurrency:
+  # make sure only one run of this workflow for a given PR or a given branch
+  # can happen at one time. previous queued or started runs will be cancelled.
+  # github.workflow is the workflow name
+  # github.ref is the ref that triggered the workflow run
+  # on push, this is refs/heads/<branch name>
+  # on pull request, this is refs/pull/<pull request number>/merge
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash -l {0}
+
+jobs:
+  Test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          # Fetch all history so that setuptool_scm can build the correct
+          # version string.
+          fetch-depth: 0
+
+      - name: setup-micromamba
+        uses: mamba-org/setup-micromamba@v1
+        with:
+          condarc: |
+              channels:
+                - conda-forge
+          create-args: >-
+              python=${{ matrix.python-version }}
+              setuptools
+              python-build
+              pytest
+              natcap.invest>=3.16.2
+              matplotlib
+              jinja2
+              geopandas
+              altair
+          environment-name: pyenv
+
+      - name: Build and Install
+        run: |
+            python -m build --wheel
+            python -m pip install $(find dist -name "*.whl")
+
+      - name: Test with pytest
+        run: python -m pytest tests
