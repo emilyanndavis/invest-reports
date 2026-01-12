@@ -4,6 +4,7 @@ import tempfile
 import unittest
 
 import matplotlib.testing.compare
+from matplotlib.testing import set_font_settings_for_testing
 from matplotlib.testing.exceptions import ImageComparisonFailure
 import numpy
 import pygeoprocessing
@@ -17,6 +18,8 @@ projection.ImportFromEPSG(3857)
 PROJ_WKT = projection.ExportToWkt()
 
 REFS_DIR = os.path.join('tests', 'refs')
+
+set_font_settings_for_testing()
 
 
 def save_figure(fig, filepath):
