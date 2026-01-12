@@ -43,6 +43,7 @@ jobs:
               setuptools
               python-build
               pytest
+              lxml
               natcap.invest>=3.16.2
               matplotlib
               jinja2
