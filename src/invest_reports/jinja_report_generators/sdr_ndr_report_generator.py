@@ -5,6 +5,7 @@ import logging
 import time
 
 from invest_reports import jinja_env, sdr_ndr_utils, utils
+from invest_reports import report_constants
 from invest_reports.sdr_ndr_utils import RasterPlotCaptionGroup
 from invest_reports.utils import RasterPlotConfigGroup
 
@@ -59,18 +60,6 @@ def report(file_registry, args_dict, model_spec, target_html_filepath,
     input_raster_stats_table = utils.raster_inputs_summary(
         args_dict).to_html(na_rep='')
 
-    stats_table_note = (
-        '"Valid percent" indicates the percent of pixels that are not '
-        'nodata. Comparing "valid percent" values across rasters may help '
-        'you identify cases of unexpected nodata.'
-    )
-
-    raster_group_caption = (
-        'If a plot title includes "resampled," that raster was resampled to '
-        'a lower resolution for rendering in this report. Full resolution '
-        'rasters are available in the output workspace.'
-    )
-
     with open(target_html_filepath, 'w', encoding='utf-8') as target_file:
         target_file.write(TEMPLATE.render(
             report_script=__file__,
@@ -86,12 +75,12 @@ def report(file_registry, args_dict, model_spec, target_html_filepath,
             intermediate_outputs_heading='Stream Network Maps',
             intermediate_outputs_img_src=intermediate_img_src,
             intermediate_outputs_caption=raster_plot_captions.intermediates,
-            raster_group_caption=raster_group_caption,
+            raster_group_caption=report_constants.RASTER_GROUP_CAPTION,
             ws_vector_table=ws_vector_table,
             ws_vector_totals_table=ws_vector_totals_table,
             output_raster_stats_table=output_raster_stats_table,
             input_raster_stats_table=input_raster_stats_table,
-            stats_table_note=stats_table_note,
+            stats_table_note=report_constants.STATS_TABLE_NOTE,
             model_spec_outputs=model_spec.outputs,
         ))
 

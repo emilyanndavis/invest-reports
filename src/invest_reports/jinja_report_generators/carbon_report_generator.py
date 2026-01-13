@@ -2,6 +2,7 @@ import logging
 import time
 
 from invest_reports import jinja_env, sdr_ndr_utils, utils
+from invest_reports import report_constants
 
 LOGGER = logging.getLogger(__name__)
 
@@ -94,20 +95,6 @@ def report(file_registry, args_dict, model_spec, target_html_filepath):
     output_raster_stats_table = utils.raster_workspace_summary(
         file_registry).to_html(na_rep='')
 
-    # @TODO: move to shared constants
-    stats_table_note = (
-        '"Valid percent" indicates the percent of pixels that are not '
-        'nodata. Comparing "valid percent" values across rasters may help '
-        'you identify cases of unexpected nodata.'
-    )
-
-    # @TODO: move to shared constants
-    raster_group_caption = (
-        'If a plot title includes "resampled," that raster was resampled to '
-        'a lower resolution for rendering in this report. Full resolution '
-        'rasters are available in the output workspace.'
-    )
-
     # @TODO: aggregate totals table (as in old carbon report)
 
     with open(target_html_filepath, 'w', encoding='utf-8') as target_file:
@@ -125,10 +112,10 @@ def report(file_registry, args_dict, model_spec, target_html_filepath):
             intermediate_outputs_heading='Intermediate Outputs',
             intermediate_outputs_img_src=intermediate_img_src,
             intermediate_outputs_caption=intermediate_raster_caption,
-            raster_group_caption=raster_group_caption,
+            raster_group_caption=report_constants.RASTER_GROUP_CAPTION,
             output_raster_stats_table=output_raster_stats_table,
             input_raster_stats_table=input_raster_stats_table,
-            stats_table_note=stats_table_note,
+            stats_table_note=report_constants.STATS_TABLE_NOTE,
             model_spec_outputs=model_spec.outputs,
         ))
 
