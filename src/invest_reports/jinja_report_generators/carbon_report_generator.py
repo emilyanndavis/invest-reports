@@ -13,33 +13,34 @@ def _get_raster_plot_tuples(args_dict):
     input_raster_plot_tuples = [
         ('lulc_bas_path', 'nominal'),
     ]
-    output_raster_plot_tuples = [
-        ('c_storage_bas', 'continuous', 'linear'),
-    ]
-    intermediate_output_raster_plot_tuples = [
-        ('c_above_bas', 'continuous', 'linear'),
-        ('c_below_bas', 'continuous', 'linear'),
-        ('c_dead_bas', 'continuous', 'linear'),
-        ('c_soil_bas', 'continuous', 'linear'),
-    ]
-    if (args_dict['calc_sequestration']):
+    if args_dict['calc_sequestration']:
         input_raster_plot_tuples.extend([
             ('lulc_alt_path', 'nominal'),
         ])
+
+    output_raster_plot_tuples = [
+        ('c_storage_bas', 'continuous', 'linear'),
+    ]
+    if args_dict['calc_sequestration']:
         output_raster_plot_tuples.extend([
             ('c_storage_alt', 'continuous', 'linear'),
             ('c_change_bas_alt', 'divergent', 'linear'),
         ])
-        intermediate_output_raster_plot_tuples.extend([
-            ('c_above_alt', 'continuous', 'linear'),
-            ('c_below_alt', 'continuous', 'linear'),
-            ('c_dead_alt', 'continuous', 'linear'),
-            ('c_soil_alt', 'continuous', 'linear'),
-        ])
-    if (args_dict['do_valuation']):
+    if args_dict['do_valuation']:
         output_raster_plot_tuples.extend([
             ('npv_alt', 'continuous', 'linear'),
         ])
+
+    if args_dict['calc_sequestration']:
+        intermediate_output_raster_plot_tuples = [[
+            (f'c_{pool_type}_bas', 'continuous', 'linear'),
+            (f'c_{pool_type}_alt', 'continuous', 'linear')
+         ] for pool_type in ['above', 'below', 'dead', 'soil']]
+    else:
+        intermediate_output_raster_plot_tuples = [[
+            (f'c_{pool_type}_bas', 'continuous', 'linear')
+            for pool_type in ['above', 'below', 'dead', 'soil']]]
+
     return (input_raster_plot_tuples,
             output_raster_plot_tuples,
             intermediate_output_raster_plot_tuples)
@@ -81,13 +82,31 @@ def report(file_registry, args_dict, model_spec, target_html_filepath):
         [(id, 'output') for (id, _, _) in output_raster_tuples],
         args_dict, file_registry, model_spec)
 
-    intermediate_raster_plot_configs = sdr_ndr_utils.build_raster_plot_configs(
-            file_registry, intermediate_raster_tuples)
-    intermediate_img_src = utils.plot_and_base64_encode_rasters(
-        intermediate_raster_plot_configs)
-    intermediate_raster_caption = sdr_ndr_utils.generate_caption_from_raster_list(
-        [(id, 'output') for (id, _, _) in intermediate_raster_tuples],
-        args_dict, file_registry, model_spec)
+    intermediate_raster_plot_configs = [sdr_ndr_utils.build_raster_plot_configs(
+            file_registry, tuples) for tuples in intermediate_raster_tuples]
+    intermediate_img_srcs = [utils.plot_and_base64_encode_rasters(
+        configs) for configs in intermediate_raster_plot_configs]
+    intermediate_raster_captions = [sdr_ndr_utils.generate_caption_from_raster_list(
+        [(id, 'output') for (id, _, _) in tuples],
+        args_dict, file_registry, model_spec) for tuples in intermediate_raster_tuples]
+
+    if args_dict['calc_sequestration']:
+        intermediate_headings = [
+            'Carbon Maps: Aboveground',
+            'Carbon Maps: Belowground',
+            'Carbon Maps: Dead',
+            'Carbon Maps: Soil',
+        ]
+    else:
+        intermediate_headings = ['Carbon Maps by Pool Type']
+
+    intermediate_rasters = [
+        {'heading': heading, 'img_src': img_src, 'caption': caption}
+        for (heading, img_src, caption)
+        in zip(intermediate_headings,
+               intermediate_img_srcs,
+               intermediate_raster_captions)
+    ]
 
     input_raster_stats_table = utils.raster_inputs_summary(
         args_dict).to_html(na_rep='')
@@ -109,9 +128,7 @@ def report(file_registry, args_dict, model_spec, target_html_filepath):
             inputs_caption=input_raster_caption,
             outputs_img_src=outputs_img_src,
             outputs_caption=output_raster_caption,
-            intermediate_outputs_heading='Intermediate Outputs',
-            intermediate_outputs_img_src=intermediate_img_src,
-            intermediate_outputs_caption=intermediate_raster_caption,
+            intermediate_rasters=intermediate_rasters,
             raster_group_caption=report_constants.RASTER_GROUP_CAPTION,
             output_raster_stats_table=output_raster_stats_table,
             input_raster_stats_table=input_raster_stats_table,
