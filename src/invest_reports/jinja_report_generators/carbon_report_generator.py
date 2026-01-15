@@ -40,7 +40,7 @@ def _get_raster_plot_tuples(args_dict: dict) -> tuple[
         ])
     if args_dict['do_valuation']:
         output_raster_plot_tuples.extend([
-            ('npv_alt', 'continuous', 'linear'),
+            ('npv_alt', 'divergent', 'linear'),
         ])
 
     if args_dict['calc_sequestration']:
