@@ -4,10 +4,10 @@ import time
 
 import numpy
 import pandas
+from pint import Unit
 import pygeoprocessing
 
-# @TODO: ¿move _accumulate_totals logic here? carbon model will no longer need it
-from natcap.invest.carbon import _accumulate_totals
+from natcap.invest.spec import ModelSpec
 from natcap.invest.unit_registry import u
 
 from invest_reports import jinja_env, sdr_ndr_utils, utils
@@ -18,7 +18,10 @@ LOGGER = logging.getLogger(__name__)
 TEMPLATE = jinja_env.get_template('carbon.html')
 
 
-def _get_raster_plot_tuples(args_dict):
+def _get_raster_plot_tuples(args_dict: dict) -> tuple[
+        list[tuple[str, ...]],
+        list[tuple[str, ...]],
+        list[list[tuple[str, ...]]]]:
     input_raster_plot_tuples = [
         ('lulc_bas_path', 'nominal'),
     ]
@@ -55,40 +58,66 @@ def _get_raster_plot_tuples(args_dict):
             intermediate_output_raster_plot_tuples)
 
 
-def _generate_agg_results_table(args_dict, file_registry):
-    table_data = [
-        (file_registry['c_storage_bas'], 'Baseline Carbon Storage',
-            u.metric_ton),
+def _get_intermediate_output_headings(args_dict: dict) -> list[str]:
+    if args_dict['calc_sequestration']:
+        return [
+            'Carbon Maps: Aboveground',
+            'Carbon Maps: Belowground',
+            'Carbon Maps: Dead',
+            'Carbon Maps: Soil',
+        ]
+    else:
+        return ['Carbon Maps by Pool Type']
+
+
+def _get_table_inputs(args_dict: dict) -> list[tuple[str, str, Unit]]:
+    table_inputs = [
+        ('c_storage_bas', 'Baseline Carbon Storage', u.metric_ton),
     ]
     if args_dict['calc_sequestration']:
-        table_data.extend([
-            (file_registry['c_storage_alt'], 'Alternate Carbon Storage',
-                u.metric_ton),
-            (file_registry['c_change_bas_alt'], 'Change in Carbon Storage',
-                u.metric_ton),
+        table_inputs.extend([
+            ('c_storage_alt', 'Alternate Carbon Storage', u.metric_ton),
+            ('c_change_bas_alt', 'Change in Carbon Storage', u.metric_ton),
         ])
     if args_dict['do_valuation']:
-        table_data.extend([
-            (file_registry['npv_alt'],
-                'Net Present Value of Carbon Change', u.currency),
+        table_inputs.extend([
+            ('npv_alt', 'Net Present Value of Carbon Change', u.currency),
         ])
+    return table_inputs
+
+
+def _generate_agg_results_table(args_dict: dict, file_registry: dict) -> str:
+    table_inputs = _get_table_inputs(args_dict)
 
     table_df = pandas.DataFrame()
 
-    for (raster_path, description, units) in table_data:
-        total = _accumulate_totals(raster_path)
+    for (raster_id, description, units) in table_inputs:
+        raster_path = file_registry[raster_id]
         raster_info = pygeoprocessing.get_raster_info(raster_path)
+        nodata = raster_info['nodata'][0]
+
+        # Calculate sum.
+        raster_sum = 0.0
+        for _, block in pygeoprocessing.iterblocks((raster_path, 1)):
+            raster_sum += numpy.sum(
+                block[~pygeoprocessing.array_equals_nodata(
+                        block, nodata)], dtype=numpy.float64)
+
+        # Adjust for units.
         pixel_area = abs(numpy.prod(raster_info['pixel_size']))
         # Since each pixel value is in t/ha, ``total`` is in (t/ha * px) = t•px/ha.
         # Adjusted sum = ([total] t•px/ha) * ([pixel_area] m^2 / 1 px) * (1 ha / 10000 m^2) = t.
-        summary_stat = total * pixel_area / 10000
+        summary_stat = raster_sum * pixel_area / 10000
+
+        # Populate table row.
         table_df.loc[description, ['Total', 'Units', 'Filename']] = [
             summary_stat, units, os.path.basename(raster_path)]
 
     return table_df.to_html()
 
 
-def report(file_registry, args_dict, model_spec, target_html_filepath):
+def report(file_registry: dict, args_dict: dict, model_spec: ModelSpec,
+           target_html_filepath: str):
     """Generate an HTML summary of model results.
 
     Args:
@@ -132,15 +161,7 @@ def report(file_registry, args_dict, model_spec, target_html_filepath):
         [(id, 'output') for (id, _, _) in tuples],
         args_dict, file_registry, model_spec) for tuples in intermediate_raster_tuples]
 
-    if args_dict['calc_sequestration']:
-        intermediate_headings = [
-            'Carbon Maps: Aboveground',
-            'Carbon Maps: Belowground',
-            'Carbon Maps: Dead',
-            'Carbon Maps: Soil',
-        ]
-    else:
-        intermediate_headings = ['Carbon Maps by Pool Type']
+    intermediate_headings = _get_intermediate_output_headings(args_dict)
 
     intermediate_rasters = [
         {'heading': heading, 'img_src': img_src, 'caption': caption}
