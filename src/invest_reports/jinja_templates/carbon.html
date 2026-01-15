@@ -14,6 +14,11 @@
   <h2 class="section-header">Results</h2>
 
   {{ accordion_section(
+    'Aggregate Results',
+    agg_results_table | safe
+  )}}
+
+  {{ accordion_section(
     'Primary Outputs',
     content_grid([
       (caption(raster_group_caption, pre_caption=True), 100),

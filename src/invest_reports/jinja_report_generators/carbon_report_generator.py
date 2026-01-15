@@ -1,6 +1,14 @@
 import logging
 import time
 
+import numpy
+import pandas
+import pygeoprocessing
+
+# @TODO: ¿move _accumulate_totals logic here? carbon model will no longer need it
+from natcap.invest.carbon import _accumulate_totals
+from natcap.invest.unit_registry import u
+
 from invest_reports import jinja_env, sdr_ndr_utils, utils
 from invest_reports import report_constants
 
@@ -44,6 +52,38 @@ def _get_raster_plot_tuples(args_dict):
     return (input_raster_plot_tuples,
             output_raster_plot_tuples,
             intermediate_output_raster_plot_tuples)
+
+
+def _generate_agg_results_table(args_dict, file_registry):
+    table_data = [
+        (file_registry['c_storage_bas'], 'Baseline Carbon Storage',
+            u.metric_ton),
+    ]
+    if args_dict['calc_sequestration']:
+        table_data.extend([
+            (file_registry['c_storage_alt'], 'Alternate Carbon Storage',
+                u.metric_ton),
+            (file_registry['c_change_bas_alt'], 'Change in Carbon Storage',
+                u.metric_ton),
+        ])
+    if args_dict['do_valuation']:
+        table_data.extend([
+            (file_registry['npv_alt'],
+                'Net Present Value of Carbon Change', u.currency),
+        ])
+
+    table_df = pandas.DataFrame()
+
+    for (raster_path, description, units) in table_data:
+        total = _accumulate_totals(raster_path)
+        raster_info = pygeoprocessing.get_raster_info(raster_path)
+        pixel_area = abs(numpy.prod(raster_info['pixel_size']))
+        # Since each pixel value is in t/ha, ``total`` is in (t/ha * px) = t•px/ha.
+        # Adjusted sum = ([total] t•px/ha) * ([pixel_area] m^2 / 1 px) * (1 ha / 10000 m^2) = t.
+        summary_stat = total * pixel_area / 10000
+        table_df.loc[description, ['Total', 'Units']] = [summary_stat, units]
+
+    return table_df.to_html()
 
 
 def report(file_registry, args_dict, model_spec, target_html_filepath):
@@ -114,7 +154,7 @@ def report(file_registry, args_dict, model_spec, target_html_filepath):
     output_raster_stats_table = utils.raster_workspace_summary(
         file_registry).to_html(na_rep='')
 
-    # @TODO: aggregate totals table (as in old carbon report)
+    agg_results_table = _generate_agg_results_table(args_dict, file_registry)
 
     with open(target_html_filepath, 'w', encoding='utf-8') as target_file:
         target_file.write(TEMPLATE.render(
@@ -124,6 +164,7 @@ def report(file_registry, args_dict, model_spec, target_html_filepath):
             userguide_page=model_spec.userguide,
             timestamp=time.strftime('%Y-%m-%d %H:%M'),
             args_dict=args_dict,
+            agg_results_table=agg_results_table,
             inputs_img_src=inputs_img_src,
             inputs_caption=input_raster_caption,
             outputs_img_src=outputs_img_src,
