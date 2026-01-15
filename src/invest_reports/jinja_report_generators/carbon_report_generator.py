@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 
 import numpy
@@ -81,7 +82,8 @@ def _generate_agg_results_table(args_dict, file_registry):
         # Since each pixel value is in t/ha, ``total`` is in (t/ha * px) = t•px/ha.
         # Adjusted sum = ([total] t•px/ha) * ([pixel_area] m^2 / 1 px) * (1 ha / 10000 m^2) = t.
         summary_stat = total * pixel_area / 10000
-        table_df.loc[description, ['Total', 'Units']] = [summary_stat, units]
+        table_df.loc[description, ['Total', 'Units', 'Filename']] = [
+            summary_stat, units, os.path.basename(raster_path)]
 
     return table_df.to_html()
 
