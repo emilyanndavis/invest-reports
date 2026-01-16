@@ -27,13 +27,13 @@
     ])
   )}}
 
-  {% for raster in intermediate_rasters %}
+  {% for section in intermediate_raster_sections %}
   {{ accordion_section(
-    raster['heading'],
+    section['heading'],
     content_grid([
       (caption(raster_group_caption, pre_caption=True), 100),
-      (raster_plot_img(raster['img_src'], raster['heading']), 100),
-      (caption(raster['caption'], definition_list=True), 100)
+      (raster_plot_img(section['img_src'], section['heading']), 100),
+      (caption(section['caption'], definition_list=True), 100)
     ])
   )}}
   {% endfor %}

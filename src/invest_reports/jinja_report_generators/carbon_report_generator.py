@@ -163,7 +163,7 @@ def report(file_registry: dict, args_dict: dict, model_spec: ModelSpec,
 
     intermediate_headings = _get_intermediate_output_headings(args_dict)
 
-    intermediate_rasters = [
+    intermediate_raster_sections = [
         {'heading': heading, 'img_src': img_src, 'caption': caption}
         for (heading, img_src, caption)
         in zip(intermediate_headings,
@@ -192,7 +192,7 @@ def report(file_registry: dict, args_dict: dict, model_spec: ModelSpec,
             inputs_caption=input_raster_caption,
             outputs_img_src=outputs_img_src,
             outputs_caption=output_raster_caption,
-            intermediate_rasters=intermediate_rasters,
+            intermediate_raster_sections=intermediate_raster_sections,
             raster_group_caption=report_constants.RASTER_GROUP_CAPTION,
             output_raster_stats_table=output_raster_stats_table,
             input_raster_stats_table=input_raster_stats_table,
