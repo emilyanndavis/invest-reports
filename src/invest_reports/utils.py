@@ -246,7 +246,7 @@ def plot_raster_list(raster_list: list[RasterPlotConfig]):
             patches = [matplotlib.patches.Patch(
                 color=colors[i], label=f'{values[i]}') for i in range(len(values))]
             legend_kwargs = {
-                'ncol': 1,
+                'ncol': math.ceil(len(patches) / 30),
                 'loc': 'upper left',
                 'bbox_to_anchor': (1.02, 1)  # place 'loc' corner here
             }
