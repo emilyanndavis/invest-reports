@@ -97,6 +97,13 @@
     flex-wrap: wrap;
     .content-grid-item {
       padding: 0.5rem;
+      &:has(> img) {
+        display: flex;
+        justify-content: center;
+        img {
+          max-width: 100%;
+        }
+      }
     }
   }
   .wide-table-wrapper {
@@ -144,9 +151,6 @@
   .number {
       text-align: right;
       font-family: monospace;
-  }
-  img {
-    width: 100%;
   }
   dt {
     font-weight: bold;
