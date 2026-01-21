@@ -167,7 +167,7 @@ def _figure_subplots(xy_ratio, n_plots):
 
     figure_width = FIGURE_WIDTH
     sub_width = figure_width / n_cols
-    sub_height = (sub_width / xy_ratio) + 1.0  # in; expand vertically for title & subtitle
+    sub_height = (sub_width / xy_ratio)
     figure_height = sub_height * n_rows
     fig_xy_ratio = figure_width / figure_height
     # @TODO: experiment further with different thresholds and multipliers.
@@ -232,11 +232,18 @@ def plot_raster_list(raster_list: list[RasterPlotConfig]):
         mappable = ax.imshow(arr, cmap=cmap, **imshow_kwargs)
         ax.set_title(
             label=f"{os.path.basename(raster_path)}{' (resampled)' if resampled else ''}",
-            loc='left', y=1.12, pad=0,
+            loc='left', pad=(1.5 * SUBTITLE_FONT_SIZE), verticalalignment='bottom',
             fontfamily='monospace', fontsize=title_font_size, fontweight=700)
         units = _get_raster_units(raster_path)
         if units:
-            ax.text(x=0.0, y=1.0, s=f'Units: {units}', fontsize=subtitle_font_size)
+            # This -0.1 multiplier is a bit of a 'magic number' but seems to work for now.
+            subtitle_offset = -0.1 * len(arr)
+            # Set ylim top < 0 to add some padding above the plot.
+            ax.set_ylim(bottom=len(arr), top=subtitle_offset)
+            # Place subtitle text immediately above that padding.
+            ax.text(x=-0.5, y=subtitle_offset,
+                    horizontalalignment='left', verticalalignment='bottom',
+                    s=f'Units: {units}', fontsize=subtitle_font_size)
         if dtype == 'nominal':
             # typically a 'nominal' raster would be an int type, but we replaced
             # nodata with nan, so the array is now a float.
