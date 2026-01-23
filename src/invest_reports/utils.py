@@ -6,12 +6,15 @@ import os
 from io import BytesIO
 from enum import Enum
 
+import distinctipy
 import geometamaker
 import numpy
 import pygeoprocessing
 import matplotlib
-import matplotlib.pyplot as plt
+import matplotlib.colors
 from matplotlib.colors import ListedColormap
+import matplotlib.patches
+import matplotlib.pyplot as plt
 import pandas
 import yaml
 from osgeo import gdal
@@ -54,6 +57,8 @@ pandas.set_option('display.float_format', '{:G}'.format)
 COLORMAPS = {
     'continuous': 'viridis',
     'divergent': 'BrBG',
+    # Default for nominal data is matplotlib's tab20.
+    # If > 20 colors are needed, colormap will be generated with distinctipy.
     'nominal': 'tab20',
     # This `1` color has good (but not especially high) contrast against both
     # black (the `0` color) and white (the figure background).
@@ -229,11 +234,13 @@ def plot_raster_list(raster_list: list[RasterPlotConfig]):
             imshow_kwargs['vmin'] = -0.5
             imshow_kwargs['vmax'] = 1.5
             colorbar_kwargs['ticks'] = [0, 1]
-        mappable = ax.imshow(arr, cmap=cmap, **imshow_kwargs)
+
+        # @TODO: extract title/text settings into shared const/fn so plot_raster_facets can get them too.
         ax.set_title(
             label=f"{os.path.basename(raster_path)}{' (resampled)' if resampled else ''}",
             loc='left', pad=(1.5 * SUBTITLE_FONT_SIZE), verticalalignment='bottom',
             fontfamily='monospace', fontsize=title_font_size, fontweight=700)
+
         units = _get_raster_units(raster_path)
         if units:
             # This -0.1 multiplier is a bit of a 'magic number' but seems to work for now.
@@ -244,14 +251,30 @@ def plot_raster_list(raster_list: list[RasterPlotConfig]):
             ax.text(x=-0.5, y=subtitle_offset,
                     horizontalalignment='left', verticalalignment='bottom',
                     s=f'Units: {units}', fontsize=subtitle_font_size)
+
         if dtype == 'nominal':
             # typically a 'nominal' raster would be an int type, but we replaced
             # nodata with nan, so the array is now a float.
             values, counts = numpy.unique(arr[~numpy.isnan(arr)], return_counts=True)
             values = values[numpy.argsort(-counts)].astype(int)  # descending order
+            # We need enough colors to cover the full range of values.
+            # If there is only one color per unique value, and the range of
+            # values is larger than the number of unique values, normalization
+            # can cause multiple values to be represented by the same color.
+            num_colors = numpy.max(values) - numpy.min(values) + 1
+            # If > 20 colors needed, generate colormap to override default.
+            if num_colors > 20:
+                # @TODO: test various `rng` seeds and `pastel_factor` values,
+                # then choose the palette that seems best (for sample data).
+                cmap = ListedColormap(
+                    distinctipy.get_colors(
+                        num_colors, pastel_factor=0.8, rng=0))
+
+            mappable = ax.imshow(arr, cmap=cmap, **imshow_kwargs)
             colors = [mappable.cmap(mappable.norm(value)) for value in values]
             patches = [matplotlib.patches.Patch(
                 color=colors[i], label=f'{values[i]}') for i in range(len(values))]
+
             legend_kwargs = {
                 'ncol': math.ceil(len(patches) / 30),
                 'loc': 'upper left',
@@ -263,6 +286,7 @@ def plot_raster_list(raster_list: list[RasterPlotConfig]):
             leg = ax.legend(handles=patches, **legend_kwargs)
             leg.set_in_layout(True)
         else:
+            mappable = ax.imshow(arr, cmap=cmap, **imshow_kwargs)
             fig.colorbar(mappable, ax=ax, **colorbar_kwargs)
     [ax.set_axis_off() for ax in axs.flatten()]
     return fig
