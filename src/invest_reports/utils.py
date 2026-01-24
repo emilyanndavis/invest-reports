@@ -20,6 +20,7 @@ import yaml
 from osgeo import gdal
 from pydantic.dataclasses import dataclass
 
+TABLE_PAGINATION_THRESHOLD = 10
 
 LOGGER = logging.getLogger(__name__)
 
@@ -504,3 +505,22 @@ def raster_inputs_summary(args_dict):
                     del raster_summary[filename]['Units']
 
     return pandas.DataFrame(raster_summary).T
+
+
+def rat_to_html(raster_path: str) -> str | None:
+    with gdal.OpenEx(raster_path) as raster:
+        band = raster.GetRasterBand(1)
+        rat = band.GetDefaultRAT()
+        if rat:
+            columns = [pandas.Series(
+                rat.ReadAsArray(i), name=rat.GetNameOfCol(i)).astype('string')
+                for i in range(rat.GetColumnCount())]
+            df = pandas.concat(columns, axis=1)
+            css_classes = ['datatable']
+            (num_rows, _) = df.shape
+            if num_rows > TABLE_PAGINATION_THRESHOLD:
+                css_classes.append('paginate')
+            return df.to_html(
+                index=False, na_rep='', classes=css_classes)
+        else:
+            return None

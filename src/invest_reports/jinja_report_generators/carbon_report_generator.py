@@ -179,6 +179,22 @@ def report(file_registry: dict, args_dict: dict, model_spec: ModelSpec,
 
     agg_results_table = _generate_agg_results_table(args_dict, file_registry)
 
+    lulc_pre_caption = (
+        'Values in the legend are listed in order of frequency (most common '
+        'first). If your LULC raster has a raster attribute table (RAT), you '
+        'can find that table in the "LULC Attribute Tables" section of this '
+        'report.')
+
+    lulc_attr_table_tuples = [(
+            os.path.basename(args_dict[lulc_id]),
+            utils.rat_to_html(args_dict[lulc_id])
+        ) for (lulc_id, _) in input_raster_tuples]
+
+    lulc_attr_tables = []
+    for (filename, table) in lulc_attr_table_tuples:
+        if table is not None:
+            lulc_attr_tables.append({'filename': filename, 'table': table})
+
     with open(target_html_filepath, 'w', encoding='utf-8') as target_file:
         target_file.write(TEMPLATE.render(
             report_script=__file__,
@@ -190,6 +206,8 @@ def report(file_registry: dict, args_dict: dict, model_spec: ModelSpec,
             agg_results_table=agg_results_table,
             inputs_img_src=inputs_img_src,
             inputs_caption=input_raster_caption,
+            lulc_pre_caption=lulc_pre_caption,
+            lulc_attr_tables=lulc_attr_tables,
             outputs_img_src=outputs_img_src,
             outputs_caption=output_raster_caption,
             intermediate_raster_sections=intermediate_raster_sections,
