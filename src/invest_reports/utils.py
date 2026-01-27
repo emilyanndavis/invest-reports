@@ -37,16 +37,31 @@ MPL_SAVE_FIG_KWARGS = {
     'bbox_inches': 'tight'
 }
 
-# We set report container max width to 80rem.
-# img is set to width:100%, but it's best if figures are sized to
-# fill the container with minimal rescaling, as they contain rasterized text.
+# Our CSS sets report container max width to 80rem, which is 1280px
+# (with default browser settings, i.e., root font size = 16px).
+# After accounting for padding and borders,
+# an img typically has a max width of 75.5rem, or 1208px.
+# It's best if figures are sized to fill their containers
+# with minimal rescaling, since they contain rasterized text.
 # Other variables:
-#   root font size (default 16px)
-#   savefig with tight bbox layout shrinks the figure after it is sized
-FIGURE_WIDTH = 14.5  # inches; by trial & error
+#   - When creating a figure, e.g., with plt.subplots, default dpi is 100.
+#   - Creating a figure with layout='constrained' may automagically adjust
+#     subplot sizes and grid spacing (potentially affecting overall figure
+#     size) to ensure colorbars/legends don't overlap or get cut off.
+#   - Savefig with tight bbox layout shrinks the figure after it is sized.
+# In practice, with all the variables mentioned above, final image width tends
+# to be a few hundredths of an inch larger than what is specified when creating
+# the figure. With that in mind, we set max figure width slightly smaller than
+# the desired image width.
+MAX_FIGURE_WIDTH_INCHES = 12  # 1208px / 100 dpi = 12.08 in => round down to 12.0
+# The goal of max height is to ensure a given subplot fits within the vertical
+# bounds of a maximized window on any laptop/desktop screen. At one extreme,
+# some laptop screens are only 768px high. Allowing some buffer for browser
+# toolbars (~ 10% of window height) leaves around 700px for the subplot itself.
+MAX_SUBPLOT_HEIGHT_INCHES = 7  # 700px / 100 dpi = 7 in
 
-TITLE_FONT_SIZE = 14  # pt
-SUBTITLE_FONT_SIZE = 12  # pt
+TITLE_FONT_SIZE = 13  # 13pt ≈ 18.1px
+SUBTITLE_FONT_SIZE = 11  # 11pt ≈ 15.3px
 
 # Globally set the float format used in DataFrames and resulting HTML tables.
 # G indicates Python "general" format, which limits precision
@@ -171,18 +186,16 @@ def _choose_n_rows_n_cols(xy_ratio, n_plots):
 def _figure_subplots(xy_ratio, n_plots):
     n_rows, n_cols = _choose_n_rows_n_cols(xy_ratio, n_plots)
 
-    figure_width = FIGURE_WIDTH
+    figure_width = MAX_FIGURE_WIDTH_INCHES
     sub_width = figure_width / n_cols
     sub_height = (sub_width / xy_ratio)
     figure_height = sub_height * n_rows
-    fig_xy_ratio = figure_width / figure_height
-    # @TODO: experiment further with different thresholds and multipliers.
-    # @TODO: ¿consider taking n_rows into account?
-    if fig_xy_ratio < 0.75:
+    max_figure_height = MAX_SUBPLOT_HEIGHT_INCHES * n_rows
+    if figure_height > max_figure_height:
         # Constrain height, then adjust width accordingly.
-        figure_height = 0.65 * figure_width
-        figure_width = fig_xy_ratio * figure_height
-        # @TODO: downscale text (¿by how much?) to keep it from appearing abnormally large in the report.
+        downscale_factor = max_figure_height / figure_height
+        figure_height = max_figure_height
+        figure_width *= downscale_factor
 
     fig, axs = plt.subplots(
         n_rows, n_cols, figsize=(figure_width, figure_height),
@@ -210,8 +223,6 @@ def plot_raster_list(raster_list: list[RasterPlotConfig]):
     n_plots = len(raster_list)
     xy_ratio = _get_aspect_ratio(bbox)
     fig, axs = _figure_subplots(xy_ratio, n_plots)
-    title_font_size = TITLE_FONT_SIZE
-    subtitle_font_size = SUBTITLE_FONT_SIZE
 
     for ax, config in zip(axs.flatten(), raster_list):
         raster_path = config.raster_path
@@ -240,7 +251,7 @@ def plot_raster_list(raster_list: list[RasterPlotConfig]):
         ax.set_title(
             label=f"{os.path.basename(raster_path)}{' (resampled)' if resampled else ''}",
             loc='left', pad=(1.5 * SUBTITLE_FONT_SIZE), verticalalignment='bottom',
-            fontfamily='monospace', fontsize=title_font_size, fontweight=700)
+            fontfamily='monospace', fontsize=TITLE_FONT_SIZE, fontweight=700)
 
         units = _get_raster_units(raster_path)
         if units:
@@ -251,7 +262,7 @@ def plot_raster_list(raster_list: list[RasterPlotConfig]):
             # Place subtitle text immediately above that padding.
             ax.text(x=-0.5, y=subtitle_offset,
                     horizontalalignment='left', verticalalignment='bottom',
-                    s=f'Units: {units}', fontsize=subtitle_font_size)
+                    s=f'Units: {units}', fontsize=SUBTITLE_FONT_SIZE)
 
         if dtype == 'nominal':
             # typically a 'nominal' raster would be an int type, but we replaced
