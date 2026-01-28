@@ -16,6 +16,12 @@ def _get_render_args(model_spec):
     input_stats_table = '<table class="test__input-stats-table"></table>'
     stats_table_note = 'This is a test!'
     inputs_caption = ['input.tif:Input map.']
+    lulc_pre_caption = 'This is a test of the LULC broadcasting system!'
+    lulc_attr_tables = [
+        {'filename': 'lulc_current.tif',
+         'table': '<table class="test__lulc-attr-table-1"></table>'},
+        {'filename': 'lulc_future.tif',
+         'table': '<table class="test__lulc-attr-table-2"></table>'}]
     outputs_caption = ['results.tif:Results map.']
     intermediate_raster_sections = []
     raster_group_caption = 'This is another test!'
@@ -31,6 +37,8 @@ def _get_render_args(model_spec):
         'agg_results_table': agg_results_table,
         'inputs_img_src': img_src,
         'inputs_caption': inputs_caption,
+        'lulc_pre_caption': lulc_pre_caption,
+        'lulc_attr_tables': lulc_attr_tables,
         'outputs_img_src': img_src,
         'outputs_caption': outputs_caption,
         'intermediate_raster_sections': intermediate_raster_sections,
@@ -57,7 +65,7 @@ class CarbonTemplateTests(unittest.TestCase):
     """Unit tests for Carbon template."""
 
     def test_render_without_alt_scenario(self):
-        """Make sure the template renders without error."""
+        """Test report rendering without alternate scenario."""
 
         render_args = _get_render_args(MODEL_SPEC)
         render_args['intermediate_raster_sections'] = (
@@ -67,14 +75,14 @@ class CarbonTemplateTests(unittest.TestCase):
         root = lxml.html.document_fromstring(html)
 
         sections = root.find_class('accordion-section')
-        # 7 default sections plus 1 section for intermediate outputs.
-        self.assertEqual(len(sections), 8)
+        # 8 default sections plus 1 section for intermediate outputs.
+        self.assertEqual(len(sections), 9)
 
         h1 = root.find('.//h1')
         self.assertEqual(h1.text, f'InVEST Results: {MODEL_SPEC.model_title}')
 
     def test_render_with_alt_scenario(self):
-        """Make sure the template renders without error."""
+        """Test report rendering with alternate scenario."""
 
         render_args = _get_render_args(MODEL_SPEC)
         render_args['intermediate_raster_sections'] = (
@@ -84,8 +92,8 @@ class CarbonTemplateTests(unittest.TestCase):
         root = lxml.html.document_fromstring(html)
 
         sections = root.find_class('accordion-section')
-        # 7 default sections plus 4 sections for intermediate outputs.
-        self.assertEqual(len(sections), 11)
+        # 8 default sections plus 4 sections for intermediate outputs.
+        self.assertEqual(len(sections), 12)
 
         h1 = root.find('.//h1')
         self.assertEqual(h1.text, f'InVEST Results: {MODEL_SPEC.model_title}')
